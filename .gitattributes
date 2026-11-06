@@ -1,0 +1,4 @@
+900/*.wasm filter=lfs diff=lfs merge=lfs -text
+900/*.data filter=lfs diff=lfs merge=lfs -text
+900/*.br filter=lfs diff=lfs merge=lfs -text
+900/*.part* filter=lfs diff=lfs merge=lfs -text
