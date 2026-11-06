@@ -5,11 +5,13 @@ on:
 jobs:
   copy-files:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Grants the workflow native permission to write files back to the repo
     steps:
-      - name: Checkout your repository with Privileged Token
+      - name: Checkout your repository with Automatic Token
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.LFS_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }} # Uses GitHub's built-in automatic token
           fetch-depth: 0
 
       - name: Clone Geometry Dash repo
@@ -58,9 +60,8 @@ jobs:
 
       - name: Commit and push changes safely to main
         run: |
-          # Use your developer profile to bypass fork security validation rules
-          git config --global user.name "elithebest222-gg"
-          git config --global user.email "226623223+elithebest222-gg@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@://github.com"
           
           # Force tracking recalculation index to format large assets into textual LFS pointers
           git rm --cached -r --ignore-unmatch games/geometry-dash/
