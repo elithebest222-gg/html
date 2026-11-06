@@ -6,49 +6,41 @@ jobs:
   copy-files:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Grants the workflow native permission to write files back to the repo
+      contents: write # Native permission to push files back to the independent repo
     steps:
-      - name: Checkout your repository with Automatic Token
+      - name: Checkout your repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # Uses GitHub's built-in automatic token
+          token: ${{ secrets.GITHUB_TOKEN }} # Built-in token works perfectly now
           fetch-depth: 0
 
       - name: Clone Geometry Dash repo
         run: |
-          # Clones the root files cleanly since this web port is at the top level
           git clone --depth 1 https://github.com/elithebest222-gg/geometry-dash temp-repo
-          
-          # Initialize LFS tracking on source clone side to pull real binaries if any exist
           cd temp-repo
           git lfs install
           git lfs pull
           cd ..
 
-      - name: Initialize Git LFS Tracker Rules inside Target Repo
+      - name: Set Up Git LFS Tracking
         run: |
           git lfs install
           
-          # Force Git LFS engine rules to intercept heavy target payload components
-          git lfs track "games/geometry-dash/*.wasm"
-          git lfs track "games/geometry-dash/*.data"
-          git lfs track "games/geometry-dash/*.br"
-          git lfs track "games/geometry-dash/*.part*"
+          # Instruct the system to intercept your split game engine parts inside folder 900
+          git lfs track "900/*.wasm"
+          git lfs track "900/*.data"
+          git lfs track "900/*.br"
+          git lfs track "900/*.part*"
           
-          # Track the configuration layout definitions file
           git add .gitattributes
 
-      - name: Move Assets to Target Location
+      - name: Move Assets to Target Location 900
         run: |
-          # Setup destination root structure inside your repository
-          mkdir -p games/geometry-dash
-          
-          # Clean out Git metadata from the temporary folder before copying
+          mkdir -p 900
           rm -rf temp-repo/.git
           
-          # Copy over the specific game directory contents natively
           if [ -f "temp-repo/index.html" ]; then
-            rsync -av --delete temp-repo/ games/geometry-dash/
+            rsync -av --delete temp-repo/ 900/
           else
             echo "::error::Source game files not found in temp-repo!"
             exit 1
@@ -63,11 +55,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@://github.com"
           
-          # Force tracking recalculation index to format large assets into textual LFS pointers
-          git rm --cached -r --ignore-unmatch games/geometry-dash/
-          git add games/geometry-dash/
+          git rm --cached -r --ignore-unmatch 900/ || true
+          git add 900/
           
-          git commit -m "Imported Geometry Dash web assets into LFS tracking rules via automated workflow" || echo "No changes to commit"
-          
+          git commit -m "Imported Geometry Dash web assets into 900 folder via Git LFS" || echo "No changes to commit"
           git pull --rebase origin main
           git push origin main
