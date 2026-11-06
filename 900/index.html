@@ -13,7 +13,7 @@
         width: 100vw;
         height: 100vh;
         display: flex;
-        justify-center: center;
+        justify-content: center;
         align-items: center;
       }
       #canvas {
@@ -39,70 +39,46 @@
     <div id="loading-box">Geometry Dash<br><br>LOADING...</div>
     <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
 
-    <!-- Core Decoding Infrastructure -->
-    <script src="brotli-decoder.js"></script>
     <script>
       const canvas = document.getElementById('canvas');
       const loadingBox = document.getElementById('loading-box');
 
-      // The 13 required data splits matching your folder tree
-      const partFiles = [
-        'gd_web.data.br.part1', 'gd_web.data.br.part2', 'gd_web.data.br.part3',
-        'gd_web.data.br.part4', 'gd_web.data.br.part5', 'gd_web.data.br.part6',
-        'gd_web.data.br.part7', 'gd_web.data.br.part8', 'gd_web.data.br.part9',
-        'gd_web.data.br.part10', 'gd_web.data.br.part11', 'gd_web.data.br.part12',
-        'gd_web.data.br.part13'
-      ];
+      // Automatically determine the exact current subfolder pathway location
+      const currentFolder = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/';
 
-      // Download and merge chunks
-      Promise.all(partFiles.map(file => fetch(file).then(res => {
-        if (!res.ok) throw new Error(`Failed to load chunk: ${file}`);
-        return res.arrayBuffer();
-      })))
-      .then(buffers => {
-        // Calculate total size and allocate memory array
-        let totalLength = buffers.reduce((acc, buf) => acc + buf.byteLength, 0);
-        let combinedArray = new Uint8Array(totalLength);
-        
-        // Stitch pieces into structural binary sequence
-        let offset = 0;
-        buffers.forEach(buf => {
-          combinedArray.set(new Uint8Array(buf), offset);
-          offset += buf.byteLength;
+      // Native Emscripten Configuration Layer forcing current subfolder targeting
+      var Module = {
+        canvas: canvas,
+        arguments: [],
+        print: function(text) { console.log(text); },
+        printErr: function(text) { console.error(text); },
+        locateFile: function(path) {
+          // Forces WebAssembly engine to look nowhere else but this exact subfolder path
+          return currentFolder + path;
+        },
+        onRuntimeInitialized: function() {
+          loadingBox.style.display = 'none';
+        }
+      };
+
+      // Load flat compiled game bundle specifically from this subfolder path
+      fetch(currentFolder + 'gd_web.data')
+        .then(res => {
+          if (!res.ok) throw new Error("Could not find gd_web.data game build assets in subfolder!");
+          return res.arrayBuffer();
+        })
+        .then(buffer => {
+          Module['dataAsset'] = new Uint8Array(buffer);
+          
+          // Inject standard Javascript runtime engine script pointing strictly to the same subfolder
+          const script = document.createElement('script');
+          script.src = currentFolder + "gd_web.js";
+          document.body.appendChild(script);
+        })
+        .catch(err => {
+          console.error(err);
+          loadingBox.innerHTML = "Geometry Dash<br><br><span style='color:#ff4d4d;'>LOADING FAILED</span>";
         });
-
-        // Initialize internal Brotli decompression engine
-        return BrotliDecode(combinedArray);
-      })
-      .then(decompressedData => {
-        window.Module = {
-          canvas: canvas,
-          arguments: [],
-          locateFile: function(path) { return path; },
-          onRuntimeInitialized: function() {
-            loadingBox.style.display = 'none';
-          }
-        };
-
-        // Pass decompressed assets directly into Module cache memory allocation
-        Module['dataAsset'] = decompressedData;
-
-        // Safely fetch and run core WebAssembly engines
-        return fetch('gd_web.js.br')
-          .then(res => res.arrayBuffer())
-          .then(buf => BrotliDecode(new Uint8Array(buf)));
-      })
-      .then(jsBuffer => {
-        // Execute clean JS runtime engine thread natively
-        const scriptText = new TextDecoder('utf-8').decode(jsBuffer);
-        const scriptElement = document.createElement('script');
-        scriptElement.text = scriptText;
-        document.body.appendChild(scriptElement);
-      })
-      .catch(err => {
-        console.error(err);
-        loadingBox.innerHTML = "Geometry Dash<br><br><span style='color:#ff4d4d;'>LOADING FAILED</span>";
-      });
     </script>
   </body>
 </html>
