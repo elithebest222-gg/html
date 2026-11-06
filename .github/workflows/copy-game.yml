@@ -11,12 +11,12 @@ jobs:
       - name: Checkout your repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # Built-in token works perfectly now
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Clone Geometry Dash repo
         run: |
-          git clone --depth 1 https://github.com/elithebest222-gg/geometry-dash temp-repo
+          git clone --depth 1 https://github.com/elithebest222-gg/geometry-dash-wasm temp-repo
           cd temp-repo
           git lfs install
           git lfs pull
@@ -53,11 +53,14 @@ jobs:
       - name: Commit and push changes safely to main
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@://github.com"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
+          # Clear cache to force Git LFS to intercept the files upon re-adding
           git rm --cached -r --ignore-unmatch 900/ || true
-          git add 900/
           
-          git commit -m "Imported Geometry Dash web assets into 900 folder via Git LFS" || echo "No changes to commit"
+          # Add both the assets and the tracking configuration
+          git add 900/ .gitattributes
+          
+          git commit -m "Imported Geometry Dash WASM assets into 900 folder via Git LFS" || echo "No changes to commit"
           git pull --rebase origin main
           git push origin main
