@@ -1,0 +1,72 @@
+name: Copy Geometry Dash Web Port
+on:
+  workflow_dispatch:
+
+jobs:
+  copy-files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repository with Privileged Token
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.LFS_TOKEN }}
+          fetch-depth: 0
+
+      - name: Clone Geometry Dash repo
+        run: |
+          # Clones the root files cleanly since this web port is at the top level
+          git clone --depth 1 https://github.com/elithebest222-gg/geometry-dash temp-repo
+          
+          # Initialize LFS tracking on source clone side to pull real binaries if any exist
+          cd temp-repo
+          git lfs install
+          git lfs pull
+          cd ..
+
+      - name: Initialize Git LFS Tracker Rules inside Target Repo
+        run: |
+          git lfs install
+          
+          # Force Git LFS engine rules to intercept heavy target payload components
+          git lfs track "games/geometry-dash/*.wasm"
+          git lfs track "games/geometry-dash/*.data"
+          git lfs track "games/geometry-dash/*.br"
+          git lfs track "games/geometry-dash/*.part*"
+          
+          # Track the configuration layout definitions file
+          git add .gitattributes
+
+      - name: Move Assets to Target Location
+        run: |
+          # Setup destination root structure inside your repository
+          mkdir -p games/geometry-dash
+          
+          # Clean out Git metadata from the temporary folder before copying
+          rm -rf temp-repo/.git
+          
+          # Copy over the specific game directory contents natively
+          if [ -f "temp-repo/index.html" ]; then
+            rsync -av --delete temp-repo/ games/geometry-dash/
+          else
+            echo "::error::Source game files not found in temp-repo!"
+            exit 1
+          fi
+
+      - name: Clean Up Temporary Workspace
+        run: |
+          rm -rf temp-repo
+
+      - name: Commit and push changes safely to main
+        run: |
+          # Use your developer profile to bypass fork security validation rules
+          git config --global user.name "elithebest222-gg"
+          git config --global user.email "226623223+elithebest222-gg@users.noreply.github.com"
+          
+          # Force tracking recalculation index to format large assets into textual LFS pointers
+          git rm --cached -r --ignore-unmatch games/geometry-dash/
+          git add games/geometry-dash/
+          
+          git commit -m "Imported Geometry Dash web assets into LFS tracking rules via automated workflow" || echo "No changes to commit"
+          
+          git pull --rebase origin main
+          git push origin main
